@@ -41,7 +41,7 @@ io.on('connection', socket => {
     } else if (user) {
       socket.emit('message', {
         user: 'admin',
-        text: `${user.name}, welcome to the room ${user.room}`,
+        text: `${user.name}, welcome to the room '${user.room}'`,
       });
 
       socket.broadcast

@@ -27,6 +27,14 @@ app.use(router);
 const httpServer = http.createServer(app);
 const io = socketio(httpServer);
 
+io.on('connection', socket => {
+  console.log('we have a new connection');
+
+  socket.on('disconnect', () => {
+    console.log('User has left');
+  });
+});
+
 // Database
 mongoose.Promise = global.Promise;
 mongoose

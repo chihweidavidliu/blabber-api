@@ -5,6 +5,8 @@ import http from 'http';
 import router from './router';
 import mongoose from 'mongoose';
 
+import { addUser, removeUser, getUser, getUsersInRoom } from './users';
+
 //config
 import config from './config/config.json';
 const env = process.env.NODE_ENV || 'development'; // set the environment
@@ -30,8 +32,50 @@ const io = socketio(httpServer);
 io.on('connection', socket => {
   console.log('we have a new connection');
 
+  // joining
+  socket.on('join', ({ name, room }, callback) => {
+    const { error, user } = addUser({ id: socket.id, name, room });
+
+    if (error) {
+      return callback({ error });
+    } else if (user) {
+      socket.emit('message', {
+        user: 'admin',
+        text: `${user.name}, welcome to the room ${user.room}`,
+      });
+
+      socket.broadcast
+        .to(user.room)
+        .emit('message', { user: 'admin', text: `${user.name} has joined` });
+
+      socket.join(user.room);
+      // send info about all the people in the room
+      io.to(user.room).emit('roomData', { room: user.room, users: getUsersInRoom(user.room) });
+
+      callback({ success: true });
+    }
+  });
+
+  // sending messages
+  socket.on('sendMessage', (message, callback) => {
+    const user = getUser(socket.id);
+
+    if (!user) {
+      return callback({ error: 'No user found' });
+    }
+
+    io.to(user.room).emit('message', { user: user.name, text: message });
+    callback({ success: true });
+  });
+
   socket.on('disconnect', () => {
-    console.log('User has left');
+    const user = removeUser(socket.id);
+    if (user) {
+      io.to(user.room).emit('message', { user: 'admin', text: `${user.name} has left` });
+
+      // update room data
+      io.to(user.room).emit('roomData', { room: user.room, users: getUsersInRoom(user.room) });
+    }
   });
 });
 

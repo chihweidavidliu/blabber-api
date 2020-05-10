@@ -1,7 +1,10 @@
 // lib/app.ts
-import express from 'express';
+import express, { Application } from 'express';
+import socketio from 'socket.io';
+import http from 'http';
 import router from './router';
 import mongoose from 'mongoose';
+
 //config
 import config from './config/config.json';
 const env = process.env.NODE_ENV || 'development'; // set the environment
@@ -17,9 +20,12 @@ if (env === 'development' || env === 'test') {
 }
 
 // Create a new express application instance
-const app: express.Application = express();
+const app: Application = express();
+app.use(router);
 
-router(app);
+// socket io requires you to create a server via the http library
+const httpServer = http.createServer(app);
+const io = socketio(httpServer);
 
 // Database
 mongoose.Promise = global.Promise;
@@ -27,7 +33,8 @@ mongoose
   .connect(`${process.env.MONGODB_URI}`)
   .catch((err: Error) => console.log('There was an error', err));
 
-export const server = app.listen(process.env.PORT, function() {
+// note that app.listen doesn't work here with socket io, must use instance of server created vio http library
+export const server = httpServer.listen(process.env.PORT, function() {
   console.log(`Example app listening on port ${process.env.PORT}!`);
   console.log(`Connected to database ${process.env.MONGODB_URI}`);
 });
